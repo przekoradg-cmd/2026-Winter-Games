@@ -5,43 +5,34 @@ const teams = {
   "Team Diehl": ["it","de","se"]
 };
 
-const medalDataUrl =
-  "https://whereig.com/olympics/winter-olympics/2026-winter-olympics-medal-table-milan-cortina.html";
+const medalDataUrl = "https://whereig.com/olympics/...";
+
 
 const medalCounts = {};
 
 async function fetchMedals() {
   try {
     const res = await fetch(
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(medalDataUrl)}`
+      "https://raw.githubusercontent.com/openfootball/olympics/master/2026/medals.json"
     );
-    const html = await res.text();
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, "text/html");
+    const data = await res.json();
 
-    const rows = doc.querySelectorAll("table tr");
-    rows.forEach(row => {
-      const cells = row.querySelectorAll("td");
-      if (cells.length >= 5) {
-        const country = cells[1].textContent.trim().toLowerCase();
-        const gold = parseInt(cells[2]) || 0;
-        const silver = parseInt(cells[3]) || 0;
-        const bronze = parseInt(cells[4]) || 0;
-        medalCounts[country] = {
-          gold,
-          silver,
-          bronze,
-          total: gold + silver + bronze
-        };
-      }
+    data.forEach(c => {
+      medalCounts[c.code.toLowerCase()] = {
+        gold: c.gold,
+        silver: c.silver,
+        bronze: c.bronze,
+        total: c.gold + c.silver + c.bronze
+      };
     });
 
     displayTeams();
     buildLeaderboard();
   } catch (err) {
-    console.warn("Medal fetch failed:", err);
+    console.error("Medal fetch failed:", err);
   }
 }
+
 
 function getMedals(code) {
   return medalCounts[code] || { gold: 0, silver: 0, bronze: 0, total: 0 };
