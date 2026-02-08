@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 Winter Olympics Tracker</title>
+    <style>
+        :root {
+            --bg: #f4f7f6;
+            --card: #ffffff;
+            --primary: #0081C8; /* Olympic Blue */
+            --gold: #FFD700;
+            --silver: #C0C0C0;
+            --bronze: #CD7F32;
+        }
+
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; }
+        h1 { text-align: center; color: var(--primary); margin-bottom: 30px; }
+        
+        /* Leaderboard Styling */
+        .leaderboard { background: #333; color: white; border-radius: 12px; padding: 20px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .leaderboard h2 { margin-top: 0; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; color: var(--gold); }
+        .leader-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #444; }
+        .leader-item:last-child { border-bottom: none; }
+        .leader-item.first { font-weight: bold; font-size: 1.2rem; color: var(--gold); }
+
+        /* Team Cards */
+        .team-card { background: var(--card); border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .team-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--bg); padding-bottom: 10px; margin-bottom: 10px; }
+        .team-name { font-size: 1.4rem; font-weight: 800; }
+        .team-total { background: var(--primary); color: white; padding: 4px 12px; border-radius: 20px; font-weight: bold; }
+
+        .country-row { display: flex; align-items: center; padding: 8px 0; }
+        .flag { font-size: 1.5rem; margin-right: 12px; }
+        .country-name { flex-grow: 1; font-weight: 500; }
+        .medal-counts { display: flex; gap: 10px; }
+        .medal { display: flex; align-items: center; gap: 4px; font-weight: bold; }
+        .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🏔️ 2026 Winter Games</h1>
+
+    <div class="leaderboard">
+        <h2>🏆 Leaderboard</h2>
+        <div id="leaderboard-content">Loading standings...</div>
+    </div>
+
+    <div id="teams-container">
+        </div>
+</div>
+
+<script>
+    // Configuration: Teams and Countries
+    const teams = [
+        { name: "Team DiRezze", countries: ["USA", "CHN", "FIN"] },
+        { name: "Team Przekora", countries: ["NOR", "SUI", "AUT"] },
+        { name: "Team Farner", countries: ["CAN", "JPN", "FRA"] },
+        { name: "Team Diehl", countries: ["ITA", "GER", "SWE"] }
+    ];
+
+    // Country Metadata (Flags and ISO Codes)
+    const countryData = {
+        "USA": { name: "USA", flag: "🇺🇸" },
+        "CHN": { name: "China", flag: "🇨🇳" },
+        "FIN": { name: "Finland", flag: "🇫🇮" },
+        "NOR": { name: "Norway", flag: "🇳🇴" },
+        "SUI": { name: "Switzerland", flag: "🇨🇭" },
+        "AUT": { name: "Austria", flag: "🇦🇹" },
+        "CAN": { name: "Canada", flag: "🇨🇦" },
+        "JPN": { name: "Japan", flag: "🇯🇵" },
+        "FRA": { name: "France", flag: "🇫🇷" },
+        "ITA": { name: "Italy", flag: "🇮🇹" },
+        "GER": { name: "Germany", flag: "🇩🇪" },
+        "SWE": { name: "Sweden", flag: "🇸🇪" }
+    };
+
+    // Simulated "Live" Data - In a real app, replace this fetch with an Olympic API
+    async function fetchMedalData() {
+        // Mocking the current Feb 8, 2026 counts found in search
+        return {
+            "ITA": { g: 1, s: 2, b: 3 }, "NOR": { g: 2, s: 1, b: 2 },
+            "JPN": { g: 1, s: 1, b: 1 }, "AUT": { g: 1, s: 1, b: 0 },
+            "FRA": { g: 1, s: 1, b: 0 }, "SWE": { g: 1, s: 1, b: 0 },
+            "GER": { g: 0, s: 1, b: 1 }, "SUI": { g: 1, s: 0, b: 0 },
+            "USA": { g: 1, s: 0, b: 0 }, "CAN": { g: 0, s: 0, b: 1 },
+            "CHN": { g: 0, s: 0, b: 1 }, "FIN": { g: 0, s: 0, b: 0 }
+        };
+    }
+
+    function render() {
+        fetchMedalData().then(data => {
+            const teamScores = teams.map(team => {
+                let total = 0;
+                let breakdown = team.countries.map(code => {
+                    const m = data[code] || {g:0, s:0, b:0};
+                    const sum = m.g + m.s + m.b;
+                    total += sum;
+                    return { code, ...m, total: sum };
+                });
+                return { ...team, total, breakdown };
+            });
+
+            // Sort Leaderboard
+            const sortedTeams = [...teamScores].sort((a, b) => b.total - a.total);
+
+            // Update Leaderboard HTML
+            document.getElementById('leaderboard-content').innerHTML = sortedTeams.map((t, i) => `
+                <div class="leader-item ${i === 0 ? 'first' : ''}">
+                    <span>${i + 1}. ${t.name}</span>
+                    <span>${t.total} Medals</span>
+                </div>
+            `).join('');
+
+            // Update Teams HTML
+            document.getElementById('teams-container').innerHTML = teamScores.map(t => `
+                <div class="team-card">
+                    <div class="team-header">
+                        <span class="team-name">${t.name}</span>
+                        <span class="team-total">${t.total}</span>
+                    </div>
+                    ${t.breakdown.map(c => `
+                        <div class="country-row">
+                            <span class="flag">${countryData[c.code].flag}</span>
+                            <span class="country-name">${countryData[c.code].name}</span>
+                            <div class="medal-counts">
+                                <span class="medal" style="color:var(--gold)">${c.g}</span>
+                                <span class="medal" style="color:var(--silver)">${c.s}</span>
+                                <span class="medal" style="color:var(--bronze)">${c.b}</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+        });
+    }
+
+    render();
+    // Refresh every 5 minutes
+    setInterval(render, 300000);
+</script>
+
+</body>
+</html>
