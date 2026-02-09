@@ -8,20 +8,18 @@
         :root {
             --bg: #f4f7f6;
             --card: #ffffff;
-            --primary: #0081C8; /* Olympic Blue */
+            --primary: #0081C8;
             --gold: #FFD700;
             --silver: #C0C0C0;
             --bronze: #CD7F32;
         }
 
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
         .container { max-width: 600px; margin: 0 auto; }
         h1 { text-align: center; color: var(--primary); margin-bottom: 30px; }
         
-        .leaderboard { background: #333; color: white; border-radius: 12px; padding: 20px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); position: relative; }
+        .leaderboard { background: #333; color: white; border-radius: 12px; padding: 20px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         .leaderboard h2 { margin-top: 0; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; color: var(--gold); }
-        .last-updated { font-size: 0.75rem; color: #aaa; margin-bottom: 15px; display: block; }
-        
         .leader-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #444; }
         .leader-item:last-child { border-bottom: none; }
         .leader-item.first { font-weight: bold; font-size: 1.2rem; color: var(--gold); }
@@ -45,8 +43,7 @@
 
     <div class="leaderboard">
         <h2>🏆 Leaderboard</h2>
-        <span id="update-time" class="last-updated">Checking for updates...</span>
-        <div id="leaderboard-content">Loading live standings...</div>
+        <div id="leaderboard-content">Updating standings...</div>
     </div>
 
     <div id="teams-container"></div>
@@ -70,6 +67,7 @@
     async function fetchMedalData() {
         try {
             const response = await fetch("https://en.wikipedia.org/api/rest_v1/page/mobile-sections/2026_Winter_Olympics_medal_table");
+            if (!response.ok) throw new Error('Network response was not ok');
             const json = await response.json();
             const html = json.remaining.sections[0].text;
             const parser = new DOMParser();
@@ -89,22 +87,19 @@
                     };
                 }
             });
+            // Check if we actually got data
+            if (Object.keys(counts).length === 0) throw new Error('No data parsed');
             return counts;
         } catch (e) {
-            console.error("Wikipedia fetch failed, using fallback data.");
+            console.warn("Live fetch failed, using Day 3 standings.");
+            // Standings as of Monday, Feb 9, 2026
             return {
-                "Norway": {g:3, s:1, b:2}, "USA": {g:2, s:0, b:0}, "Italy": {g:1, s:2, b:6},
-                "Japan": {g:1, s:2, b:1}, "Austria": {g:1, s:2, b:0}, "Germany": {g:1, s:1, b:1},
-                "Sweden": {g:1, s:1, b:0}, "France": {g:1, s:1, b:0}, "Switzerland": {g:1, s:0, b:0},
-                "Canada": {g:0, s:0, b:1}, "China": {g:0, s:0, b:1}, "Finland": {g:0, s:0, b:0}
+                "Norway": {g:3, s:1, b:2}, "Italy": {g:1, s:2, b:6}, "Switzerland": {g:2, s:0, b:0},
+                "USA": {g:2, s:0, b:0}, "Japan": {g:1, s:2, b:1}, "Austria": {g:1, s:2, b:0},
+                "Germany": {g:1, s:1, b:1}, "China": {g:0, s:1, b:1}, "France": {g:1, s:1, b:0}, 
+                "Sweden": {g:1, s:1, b:0}, "Canada": {g:0, s:0, b:2}, "Finland": {g:0, s:0, b:0}
             };
         }
-    }
-
-    function updateTimestamp() {
-        const now = new Date();
-        const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-        document.getElementById('update-time').innerText = `Last Updated: ${timeString}`;
     }
 
     async function render() {
@@ -124,3 +119,35 @@
         const sortedTeams = [...teamScores].sort((a, b) => b.total - a.total);
 
         document.getElementById('leaderboard-content').innerHTML = sortedTeams.map((t, i) => `
+            <div class="leader-item ${i === 0 ? 'first' : ''}">
+                <span>${i + 1}. ${t.name}</span>
+                <span>${t.total} Medals</span>
+            </div>
+        `).join('');
+
+        document.getElementById('teams-container').innerHTML = teamScores.map(t => `
+            <div class="team-card">
+                <div class="team-header">
+                    <span class="team-name">${t.name}</span>
+                    <span class="team-total">${t.total}</span>
+                </div>
+                ${t.breakdown.map(c => `
+                    <div class="country-row">
+                        <span class="flag">${countryData[c.name]?.flag || '🏳️'}</span>
+                        <span class="country-name">${c.name}</span>
+                        <div class="medal-counts">
+                            <span class="medal" style="color:var(--gold)">${c.g}</span>
+                            <span class="medal" style="color:var(--silver)">${c.s}</span>
+                            <span class="medal" style="color:var(--bronze)">${c.b}</span>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `).join('');
+    }
+
+    render();
+    setInterval(render, 300000);
+</script>
+</body>
+</html>
